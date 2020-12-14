@@ -1,0 +1,130 @@
+---
+title: "PCA "
+output: html_document
+author: "Shubham Shinde"
+date: "`r Sys.Date()`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Outline
+1. Load the data set heptathlon.csv. This data set contains the results for the 25 competitors of the 1988 Olympics women’s heptathlon in Seoul. The data table has 25 observations (each row has the results of one women) on the following 8 variables:
+- hurdles: results 100m hurdles.
+- highjump: results high jump.
+- shot: results shot.
+- run200m results 200m race.
+- longjump results long jump.
+- javelin results javelin.
+- run800m: results 800m race.
+- score total score.
+- see Hand et al. (1993). It is necessary to score all seven events in the same direction, so that large values are good:
+
+heptathlon$hurdles <- max(heptathlon$hurdles) - heptathlon$hurdles heptathlon$run200m <- max(heptathlon$run200m) - heptathlon$run200m heptathlon$run800m <- max(heptathlon$run800m) - heptathlon$run800m
+
+Problem: Compute a PCA without variable score, which is crucial for the overall result of each competitor and determines the winner.
+
+- Can you reduce the number of variables?
+- Prepare your results with Markdown/Sweave.
+- Analyse the data with response score and other variables as predictors.
+
+```{r libimp}
+library(factoextra)
+library(dplyr)
+```
+
+
+# Loading the Data
+```{r dataimp}
+heptathlon <- read.csv("heptathlon.csv")
+head(heptathlon, 5)
+
+heptathlon$hurdles <- max(heptathlon$hurdles) - heptathlon$hurdles
+heptathlon$run200m <- max(heptathlon$run200m) - heptathlon$run200m
+heptathlon$run800m <- max(heptathlon$run800m) - heptathlon$run800m
+
+heptathlon_orig <- heptathlon
+
+heptathlon <- heptathlon %>% 
+  select(-score)
+```
+# Principal Component Analysis
+```{r pca}
+pca <- prcomp(heptathlon, scale = TRUE)
+pca
+```
+# PCA summaries
+```{r pcasumm}
+summary(pca)
+
+get_eig(pca)
+
+colSums(get_eig(pca))
+
+str(pca)
+
+pca$x
+
+pca$rotation
+
+```
+
+# Plots 
+```{r plots}
+plot(pca)
+
+fviz_eig(pca, addlabels = TRUE, choice = "eigenvalue")
+
+biplot(pca, xpd = TRUE)
+
+fviz_pca_var(pca)
+
+plot(rowSums(heptathlon), pca$x[,1])
+```
+
+
+# Cosine² values
+```{r cosinval}
+var <- get_pca_var(pca)
+var
+
+fviz_cos2(pca, choice = "var", axes = 1:2) # High cos2 value means important variables, but
+
+
+fviz_pca_var(pca, col.var = "cos2", gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), repel = TRUE) # repel is for text overlapping, but not necessary here
+```
+
+# Model 
+```{r lmmodels}
+model_lm <- lm(score ~ hurdles + highjump, data = heptathlon_orig)
+summary(model_lm)
+
+heptathlon_orig$ypred_lm <- predict(model_lm)
+sqrt(mean(model_lm$residuals^2))
+```
+
+# Model using PCA Data
+```{r dataforpca}
+model.data <- data.frame(
+  PC1 = pca$x[,1],
+  PC2 = pca$x[,1],
+  score = heptathlon_orig$score
+)
+```
+# x.new <- cbind(heptathlon, pca$x)
+```{r modelpca}
+str(model.data)
+pca_model <- lm(score ~ PC1 + PC2,data = model.data)
+summary(pca_model)
+
+sqrt(mean(pca_model$residuals^2))
+
+```
+
+# Conclusion
+
+PCA is relevant and we can apply these variable on the model.
+The variables are highly correlated.
+
+Can be used in pattern recognition, finding similarities.
